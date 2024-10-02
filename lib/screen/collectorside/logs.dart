@@ -3,13 +3,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(MaterialApp(home: LogsScreen()));
 }
-
 
 class Event {
   final String date;
@@ -18,7 +16,7 @@ class Event {
   final String title;
   final String by;
   final String category;
-  final String status; 
+  final String status;
 
   Event({
     required this.date,
@@ -38,9 +36,9 @@ class LogsScreen extends StatefulWidget {
 
 class _LogsScreenState extends State<LogsScreen> {
   String selectedFilter = 'All';
-  final CollectionReference logsCollection = FirebaseFirestore.instance.collection('LogsInfo');
+  final CollectionReference logsCollection =
+      FirebaseFirestore.instance.collection('LogsInfo');
 
- 
   List<Event> allEvents = [];
 
   @override
@@ -49,12 +47,11 @@ class _LogsScreenState extends State<LogsScreen> {
     _fetchLogsFromFirestore();
   }
 
-
   Future<void> _fetchLogsFromFirestore() async {
     try {
       QuerySnapshot querySnapshot = await logsCollection.get();
       List<QueryDocumentSnapshot> documents = querySnapshot.docs;
-      
+
       setState(() {
         allEvents = documents.map((doc) {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -63,9 +60,9 @@ class _LogsScreenState extends State<LogsScreen> {
             time: data['dateTimez'].toDate().toString().split(' ')[1],
             sentiment: data['status'],
             title: data['location'],
-            by: data['collectionPoint'], 
-            category: 'View', 
-            status: data['status'], 
+            by: data['collectionPoint'],
+            category: 'View',
+            status: data['status'],
           );
         }).toList();
       });
@@ -78,48 +75,40 @@ class _LogsScreenState extends State<LogsScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/img/blank.png'),
-              fit: BoxFit.cover,
+        backgroundColor: Colors.white,
+        body: Column(
+          children: [
+            _buildFilterSelection(),
+            Expanded(
+              child: allEvents.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      itemCount: _getFilteredEvents().length,
+                      itemBuilder: (context, index) {
+                        Event event = _getFilteredEvents()[index];
+                        return TimelineTile(
+                          alignment: TimelineAlign.manual,
+                          lineXY: 0.2,
+                          indicatorStyle: IndicatorStyle(
+                            width: 18,
+                            color: _getIndicatorColor(event.sentiment),
+                          ),
+                          beforeLineStyle: const LineStyle(
+                            color: Colors.grey,
+                            thickness: 2,
+                          ),
+                          startChild: _buildDateTime(event.date, event.time),
+                          endChild: _buildCard(event),
+                        );
+                      },
+                    ),
             ),
-          ),
-          child: Column(
-            children: [
-              _buildFilterSelection(),
-              Expanded(
-                child: allEvents.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : ListView.builder(
-                        itemCount: _getFilteredEvents().length,
-                        itemBuilder: (context, index) {
-                          Event event = _getFilteredEvents()[index];
-                          return TimelineTile(
-                            alignment: TimelineAlign.manual,
-                            lineXY: 0.2,
-                            indicatorStyle: IndicatorStyle(
-                              width: 20,
-                              color: _getIndicatorColor(event.sentiment),
-                            ),
-                            beforeLineStyle: const LineStyle(
-                              color: Color.fromARGB(255, 0, 0, 0),
-                              thickness: 2,
-                            ),
-                            startChild: _buildDateTime(event.date, event.time),
-                            endChild: _buildCard(event),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  
   Widget _buildFilterSelection() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -136,13 +125,12 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
-  
   Widget _buildFilterButton(String filter) {
     bool isSelected = selectedFilter == filter;
     return ChoiceChip(
       label: Text(filter),
       selected: isSelected,
-      selectedColor: Colors.blue,
+      selectedColor: Colors.blueAccent,
       onSelected: (bool selected) {
         setState(() {
           selectedFilter = filter;
@@ -151,7 +139,6 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
-  
   List<Event> _getFilteredEvents() {
     if (selectedFilter == 'All') {
       return allEvents;
@@ -160,37 +147,38 @@ class _LogsScreenState extends State<LogsScreen> {
     }
   }
 
-  
   Color _getIndicatorColor(String sentiment) {
     switch (sentiment) {
       case 'Emptied':
         return Colors.green;
       case 'Full':
         return Colors.red;
-      case 'Half':
-        return Colors.orange;
       default:
         return Colors.grey;
     }
   }
 
-  
   Widget _buildCard(Event event) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSentimentTag(event.sentiment),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 event.title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 5),
               Row(
@@ -200,7 +188,7 @@ class _LogsScreenState extends State<LogsScreen> {
                   Text('${event.by}'),
                 ],
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 10),
               _buildTappableCategoryChip(event.category),
             ],
           ),
@@ -209,14 +197,13 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
-  
   Widget _buildSentimentTag(String sentiment) {
     Color color = _getIndicatorColor(sentiment);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         sentiment,
@@ -225,7 +212,6 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
-  
   Widget _buildDateTime(String date, String time) {
     return Container(
       padding: const EdgeInsets.all(8.0),
@@ -235,19 +221,25 @@ class _LogsScreenState extends State<LogsScreen> {
         children: [
           Text(
             date,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 0, 0, 0)),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 5),
           Text(
             time,
-            style: const TextStyle(fontSize: 14, color: Color.fromARGB(255, 0, 0, 0)),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black54,
+            ),
           ),
         ],
       ),
     );
   }
 
-  
   Widget _buildTappableCategoryChip(String category) {
     return GestureDetector(
       onTap: () {

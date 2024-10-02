@@ -19,14 +19,12 @@ class FormScreen extends StatefulWidget {
 class _FormScreenState extends State<FormScreen> {
   String email = "";
   String firstname = "";
- 
+
   final emailController = TextEditingController();
   final firstnameController = TextEditingController();
   final collectionPointController = TextEditingController();
   final feedbackController = TextEditingController();
   String? selectedCollectionPoint;
-  
-
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -42,7 +40,6 @@ class _FormScreenState extends State<FormScreen> {
 
   @override
   void dispose() {
-  
     emailController.dispose();
     collectionPointController.dispose();
     feedbackController.dispose();
@@ -91,7 +88,7 @@ class _FormScreenState extends State<FormScreen> {
       }
 
       await _firestore.collection("ReportForm").add({
-        "username":firstnameto,
+        "username": firstnameto,
         "email": userEmail,
         "collection_point": collectionPoint,
         "feedback": userFeedback,
@@ -103,17 +100,15 @@ class _FormScreenState extends State<FormScreen> {
         SnackBar(content: const Text("Report submitted successfully!"), backgroundColor: Colors.green),
       );
 
-    
       feedbackController.clear();
       setState(() {
         selectedCollectionPoint = null;
         _imageFile = null; // Reset image selection
       });
     } catch (e) {
-ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-  SnackBar(content: Text("Failed to submit report: $e"), backgroundColor: Colors.red),
-);
-
+      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+        SnackBar(content: Text("Failed to submit report: $e"), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -148,163 +143,123 @@ ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/img/blank.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  image: const DecorationImage(
-                    image: AssetImage('assets/img/boxcol.png'),
-                    fit: BoxFit.cover,
+      backgroundColor: Colors.white, // Set background to white
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(24.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 5,
+                    blurRadius: 7,
+                    offset: const Offset(0, 3), // changes position of shadow
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Center(
-                      child: Text(
-                        'Report Form!',
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
+                    child: Text(
+                      'REPORT FORM',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 46),
+
+                  const Text(
+                    "COLLECTION POINT",
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      labelStyle: const TextStyle(color: Colors.black),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: const BorderSide(color: Colors.grey),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: const BorderSide(color: Colors.teal),
+                      ),
+                    ),
+                    dropdownColor: Colors.white,
+                    items: ['Point 1', 'Point 2', 'Point 3']
+                        .map((point) => DropdownMenuItem(
+                              value: point,
+                              child: Text(
+                                point,
+                                style: const TextStyle(color: Colors.black),
+                              ),
+                            ))
+                        .toList(),
+                    value: selectedCollectionPoint,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedCollectionPoint = value;
+                      });
+                    },
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    "FEEDBACK",
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  TextField(
+                    controller: feedbackController,
+                    decoration: InputDecoration(
+                      labelStyle: const TextStyle(color: Colors.black),
+                      hintText: 'Type here...',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
+                    maxLines: 4,
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                  const SizedBox(height: 24),
+
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: submitForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF587F38),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      ),
+                      child: const Text(
+                        'Send',
                         style: TextStyle(
-                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 46),
-
-                    
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      "EMAIL",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    ReadOnlyTo(
-                      hintText: email,
-                      tago: false,
-                      controller: emailController,
-                    ),
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      "COLLECTION POINT",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'COLLECTION POINT',
-                        labelStyle: const TextStyle(color: Colors.black),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: const BorderSide(color: Colors.teal),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: const BorderSide(color: Colors.teal),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: const BorderSide(color: Colors.teal),
-                        ),
-                      ),
-                      dropdownColor: Colors.white,
-                      items: ['Point 1', 'Point 2', 'Point 3']
-                          .map((point) => DropdownMenuItem(
-                                value: point,
-                                child: Text(
-                                  point,
-                                  style: const TextStyle(color: Colors.black),
-                                ),
-                              ))
-                          .toList(),
-                      value: selectedCollectionPoint,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedCollectionPoint = value;
-                        });
-                      },
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      "FEEDBACK",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    TextField(
-                      controller: feedbackController,
-                      decoration: InputDecoration(
-                        labelText: 'FEEDBACK',
-                        labelStyle: const TextStyle(color: Colors.black),
-                        hintText: 'Type here...',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                      ),
-                      maxLines: 4,
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // const Text(
-                    //   "Upload Image",
-                    //   style: TextStyle(color: Colors.white),
-                    // ),
-                    // const SizedBox(height: 10),
-                    // ElevatedButton.icon(
-                    //   onPressed: pickImageFromCamera,
-                    //   icon: const Icon(Icons.camera_alt),
-                    //   label: const Text("Capture Image"),
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: const Color(0xFF587F38),
-                    //   ),
-                    // ),
-                    const SizedBox(height: 10),
-
-                    // Preview the selected image
-                    // if (_imageFile != null)
-                    //   Image.file(_imageFile!, height: 200, width: 200, fit: BoxFit.cover),
-
-                    const SizedBox(height: 24),
-
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF587F38),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                        ),
-                        child: const Text(
-                          'Send',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
           ),

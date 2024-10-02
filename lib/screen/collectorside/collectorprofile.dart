@@ -25,169 +25,166 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
   }
 
   void fetchUserProfile() async {
-    final User? user = FirebaseAuth.instance.currentUser; 
+    final User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
       final uid = user.uid;
-      final userData = await FirebaseFirestore.instance.collection("Collector").doc(uid).get();
+      final userData = await FirebaseFirestore.instance
+          .collection("Collector")
+          .doc(uid)
+          .get();
 
       if (userData.exists) {
         setState(() {
-        
+          firstName = userData.data()?['firstname'] ?? '';
           lastName = userData.data()?['lastname'] ?? '';
           email = userData.data()?['email'] ?? '';
           contactNumber = userData.data()?['ContactNumber'] ?? '';
           password = userData.data()?['password'] ?? '';
           schedule = userData.data()?['schedule'] ?? '';
-          firstName = userData.data()?['firstname'] ?? '';
         });
       }
     }
   }
 
   void signout() async {
-  try {
-    await FirebaseAuth.instance.signOut();
-    
+    try {
+      await FirebaseAuth.instance.signOut();
 
-   
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginNaba()),
-      (Route<dynamic> route) => false,
-    );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginNaba()),
+        (Route<dynamic> route) => false,
+      );
 
-   
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Signed out successfully")),
-    );
-  } catch (e) {
-   
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error signing out: $e")),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Signed out successfully")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error signing out: $e")),
+      );
+    }
   }
-}
-
 
   String maskPassword(String password) {
-    return '*' * password.length; 
+    return '*' * password.length;
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/img/blank.png'), 
-            fit: BoxFit.cover, 
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  image: const DecorationImage(
-                    image: AssetImage('assets/img/boxcol.png'),
-                    fit: BoxFit.cover,
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Card(
+                  elevation: 2.0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF587F38),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Profile!',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Profile Title
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 0),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade600,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(12.0),
+                              child: Text(
+                                'Profile',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 20),
+                        // Profile Fields
+                        _buildProfileInputField("First Name", firstName),
+                        const SizedBox(height: 16),
+                        _buildProfileInputField("Last Name", lastName),
+                        const SizedBox(height: 16),
+                        _buildProfileInputField("Phone Number", contactNumber),
+                        const SizedBox(height: 16),
+                        _buildProfileInputField("Email", email),
+                        const SizedBox(height: 16),
+                        _buildProfileInputField("Password", maskPassword(password)),
+                      ],
                     ),
-                    const SizedBox(height: 46),
-                    Text(
-                      "FIRSTNAME: $firstName",
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "LASTNAME: $lastName",
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "PHONE NUMBER: $contactNumber",
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "EMAIL: $email",
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "PASSWORD: ${maskPassword(password)}", 
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Schedule: $schedule", 
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                   ElevatedButton.icon(
-  onPressed: () async {
-    
-    bool? confirmSignOut = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmSignOut == true) {
-      signout();
-    }
-  },
-  icon: const Icon(Icons.logout_outlined),
-  label: const Text('Sign Out'),
-  style: ElevatedButton.styleFrom(
-   
-  ),
-)
-
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 20),
+                // Sign Out Button
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    bool? confirmSignOut = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Confirm Sign Out'),
+                        content: const Text('Are you sure you want to sign out?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Sign Out'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmSignOut == true) {
+                      signout();
+                    }
+                  },
+                  icon: const Icon(Icons.logout_outlined),
+                  label: const Text('Sign Out'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildProfileInputField(String label, String value) {
+    return TextField(
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.grey.shade200,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      readOnly: true,
+      controller: TextEditingController(text: value),
     );
   }
 }

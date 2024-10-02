@@ -134,7 +134,7 @@ class _MapScreenState extends State<MapScreen> {
           icon: markerIcon,
           onTap: () {
             _showMarkerInfo(
-              title: 'Barangay Anonas Trashbin',
+              title: 'Brgy. Anonas, Urdaneta City, Pangasinan Trashbin',
               snippet: 'Anonas Road',
               imagePath: 'assets/img/anonas.png',
               onGetPressed: () {

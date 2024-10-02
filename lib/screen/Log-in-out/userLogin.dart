@@ -15,131 +15,174 @@ class LoginScreen extends StatefulWidget {
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
-
 class _LoginScreenState extends State<LoginScreen> {
   final formKey = GlobalKey<FormState>();
-
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  void signIn() async{
-    final authService = Provider.of<AuthService>(context, listen:false);
+  bool _obscureText = true;
 
-    try{
-      await authService.signInWithEmailPassword(emailController.text, passwordController.text);
-     Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_)=>const UserHomeScreen()), (route) => false);
-        ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Signed In successfully")),
-    );
-    }catch (e){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+  void signIn() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    try {
+      await authService.signInWithEmailPassword(
+          emailController.text, passwordController.text);
+      Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const UserHomeScreen()),
+          (route) => false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Signed In successfully")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
-    
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/img/blank.png'), 
-            fit: BoxFit.cover, 
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  image: const DecorationImage(
-                    image: AssetImage('assets/img/boxcol.png'), 
-                    fit: BoxFit.cover,
+      backgroundColor: Colors.white, // Background color
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(32.0),
+              decoration: BoxDecoration(
+                color: Colors.white, // Minimal white background
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.15),
+                    spreadRadius: 10,
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF587F38), 
-                        borderRadius: BorderRadius.circular(20), 
-                      ),
-                      child: const Text(
-                        'Welcome User!',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white, 
-                        ),
-                      ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Welcome Text
+                  Text(
+                    'Welcome User!',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green.shade700,
                     ),
-                    const SizedBox(height: 46),
-                  
-                    
-                    const SizedBox(height: 20),
-                  
-                   CustomTextField(hintText: "Email", tago: false, controller: emailController,types: TextInputType.emailAddress, ),
-                    const SizedBox(height: 24),
-                    
-                   CustomTextField(hintText: "Password", tago: true, controller: passwordController, types: TextInputType.text,),
-                    const SizedBox(height: 24),
-                  
-                   ElevatedButton(
-                      onPressed: () {
-                       signIn();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF587F38), 
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20), 
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 15),
-                      ),
-                      child: const Text(
-                        'LOGIN',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                     const SizedBox(height: 16),
-                    
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_)=>RegisterScreen(onTap: () {  },)), (route) => false);
+                  ),
+                  const SizedBox(height: 40),
 
-                          },
-                          child: const Text(
-                            'Create New Account',
-                            style: TextStyle(color: Colors.greenAccent),
+                  // Email Input
+                  TextFormField(
+                    controller: emailController,
+                    decoration: InputDecoration(
+                      hintText: 'Email',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: Colors.green.shade300,
+                        ),
+                      ),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Password Input with Eye Icon
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: _obscureText,
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureText ? Icons.visibility : Icons.visibility_off,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureText = !_obscureText;
+                          });
+                        },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: Colors.green.shade300,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Login Button
+                  ElevatedButton(
+                    onPressed: signIn,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 100, vertical: 16),
+                    ),
+                    child: const Text(
+                      'LOGIN',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Create New Account and Forgot Password
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => RegisterScreen(
+                                        onTap: () {},
+                                      )),
+                              (route) => false);
+                        },
+                        child: const Text(
+                          'Create New Account',
+                          style: TextStyle(
+                            color: Colors.greenAccent,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        TextButton(
-                          onPressed: () {
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_)=>ForgotPasswordScreen()), (route) => false);
-
-                          },
-                          child: const Text(
-                            'Forgot Password',
-                            style: TextStyle(color: Colors.greenAccent),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => ForgotPasswordScreen()),
+                              (route) => false);
+                        },
+                        child: const Text(
+                          'Forgot Password',
+                          style: TextStyle(
+                            color: Colors.greenAccent,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
