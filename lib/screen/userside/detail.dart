@@ -1,339 +1,463 @@
-import 'dart:math';
-
-import 'package:capstoneapp/screen/map.dart';
-import 'package:capstoneapp/screen/userside/form.dart';
-import 'package:capstoneapp/screen/userside/profile.dart';
-import 'package:capstoneapp/screen/userside/userHome.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CollectionPointsScreen extends StatefulWidget {
-  final String location;
+  final String collectionPoint;
 
-  CollectionPointsScreen({required this.location});
+  CollectionPointsScreen({Key? key, required this.collectionPoint}) : super(key: key);
+
+  @override
   _CollectionPointsScreenState createState() => _CollectionPointsScreenState();
 }
 
 class _CollectionPointsScreenState extends State<CollectionPointsScreen> {
-  Future<List<Map<String, dynamic>>> _fetchCollectionData() async {
-    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-        .collection('LogsInfo')
-        .where('location', isEqualTo: widget.location)
-        .get();
+  final SupabaseClient supabase = Supabase.instance.client;
+  List<dynamic> feedbackList = [];
+  final collectionPointController = TextEditingController();
 
-    return querySnapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+
+  @override
+  void initState() {
+    super.initState();
+    fetchFeedback().then((data) {
+      setState(() {
+        feedbackList = data;
+      });
+    }).catchError((e) {
+      print('Failed to load feedback: $e');
+    });
   }
 
-  Future<List<Map<String, String>>> _fetchFeedbackData() async {
+  Future<List<dynamic>> fetchFeedback() async {
     try {
-      // Fetch all feedback documents
-      QuerySnapshot feedbackSnapshot = await FirebaseFirestore.instance
-          .collection('ReportForm')
-          .get();
+      final response = await supabase
+          .from('user_feedback')
+          .select()
+          .eq('collection_point', widget.collectionPoint)
+          .order('created_at', ascending: false);
 
-      List<Map<String, String>> feedbackList = [];
-
-      for (var feedbackDoc in feedbackSnapshot.docs) {
-        String userEmail = feedbackDoc['email'] ?? '';
-        String feedback = feedbackDoc['feedback'] ?? '';
-
-        // Fetch user data based on email
-        QuerySnapshot usersSnapshot = await FirebaseFirestore.instance
-            .collection('Users')
-            .where('email', isEqualTo: userEmail)
-            .get();
-
-        if (usersSnapshot.docs.isNotEmpty) {
-          var userDoc = usersSnapshot.docs.first; // Get the first user doc
-          var userData = userDoc.data() as Map<String, dynamic>;
-          var userName = userData['firstname'] ?? 'Unknown'; // Handle potential null
-
-          feedbackList.add({
-            'name': userName,
-            'feedback': feedback,
-          });
-        } else {
-          // If no user found, you can choose to add the feedback with an unknown name
-          feedbackList.add({
-            'name': 'Unknown',
-            'feedback': feedback,
-          });
-        }
+      if (response != null) {
+        return response as List<dynamic>;
+      } else {
+        throw Exception('No feedback found.');
       }
-
-      return feedbackList;
     } catch (e) {
-      print('Error fetching feedback data: $e');
-      return []; // Return an empty list in case of an error
+      print('Error fetching feedback: $e');
+      return [];
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: Colors.green,
-      appBar: AppBar(
-        title: const Text('Collection Points', style: TextStyle(color: Colors.white),),
-       
-        backgroundColor: Colors.green,
+  String mapCollectionPoint(String point) {
+    switch (point) {
+      case 'Point 1':
+        return 'Point 1';
+      case 'Point 2':
+        return 'Point 2';
+      default:
+        return 'Unknown';
+    }
+  }
+
+   void _showReportForm() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
       ),
-      body: SafeArea(
-        
-        child: SingleChildScrollView(
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color.fromARGB(255, 26, 57, 28),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 16.0,
+              right: 16.0,
+              top: 16.0),
+          child: _buildReportForm(),
+        );
+      },
+    );
+  }
+
+  Widget _buildReportForm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Text(
+            'REQUEST',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: FutureBuilder<List<List<Map<String, dynamic>>>>(
-                future: Future.wait([_fetchCollectionData(), _fetchFeedbackData()]),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(child: Text("Error fetching data"));
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(child: Text("No data available"));
-                  }
-
-                  // Get the data from the Future
-                  List<Map<String, dynamic>> logsData = snapshot.data![0]; // Logs data
-                  List<Map<String, String>> feedbackData = (snapshot.data![1] as List<Map<String, dynamic>>)
-    .map((feedback) => feedback.map((key, value) => MapEntry(key, value.toString())))
-    .toList();
-
-                  // Display the first log data for now (can be updated to display all data)
-                  var log = logsData.first;
-                  String formattedDateTime = '';
-                  if (log['dateTimez'] is Timestamp) {
-                    Timestamp timestamp = log['dateTimez'];
-                    DateTime dateTime = timestamp.toDate(); // Convert to DateTime
-                    formattedDateTime = "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}";
-                  } else {
-                    formattedDateTime = log['dateTimez'] ?? 'Unknown';
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Row with image and status
-                      Row(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.white, // White border color
-                                width: 4.0, // Border width
-                              ),
-                            ),
-                            child: Image.network(
-                              log['imageSource'] ?? 'https://via.placeholder.com/150', // Display fetched image
-                              width: 150,
-                              height: 150,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Icon(Icons.error); // Error placeholder
-                              },
-                            ),
+          ),
+        ),
+        const SizedBox(height: 36),
+        const Text("COLLECTION POINT", style: TextStyle(color: Colors.black)),
+      //  ${mapCollectionPoint(widget.collectionPoint)}
+      TextField(
+        readOnly: true,
+        controller: collectionPointController,
+         decoration: InputDecoration(
+                      labelStyle: const TextStyle(color: Colors.black),
+                      hintText: '${mapCollectionPoint(widget.collectionPoint)}',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder( 
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
+      ),
+        const SizedBox(height: 24),
+      
+      
+        Container(
+          child:  ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: Image.asset(
+                          'assets/img/def.jpg',
+                            width: 400,
+                            height: 320,
+                            fit: BoxFit.cover,
                           ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Garbage Status: ${log['status'] ?? 'Unknown'}', // Display fetched status
-                                  style: TextStyle(
-                                    color: log['status'] == 'Full' ? Colors.red : Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                                Text(
-                                  log['status'] == 'Full'
-                                      ? 'Needs to be emptied'
-                                      : 'Garbage bin is not full',
-                                  style: TextStyle(
-                                    color: log['status'] == 'Full' ? Colors.red : Colors.green,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Date and Time\n$formattedDateTime', // Display formatted date and time
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+          ),
+          SizedBox(height: 30,),
 
-                      SizedBox(height: 16),
 
-                      // Logs Notification section
-                      Text(
-                        'Logs Notification',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Container(
-                        padding: EdgeInsets.all(16),
-                        margin: EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.green[100],
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.5),
-                              spreadRadius: 2,
-                              blurRadius: 5,
-                              offset: Offset(0, 3), // Changes position of shadow
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('2024-05-28 8:53:15'),
-                                TextButton(onPressed: () {}, child: Text('View')),
-                                Text('Emptied'),
-                              ],
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('2024-05-28 8:53:15'),
-                                TextButton(onPressed: () {}, child: Text('View')),
-                                Text('Emptied'),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: 16),
 
-                      // User Report section
-                      Text(
-                        'User Report',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Container(
-                        padding: EdgeInsets.all(16),
-                        margin: EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.green[100],
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.5),
-                              spreadRadius: 2,
-                              blurRadius: 5,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: feedbackData.map((data) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Raymart Villasis, Pangasinan:\nAng dumi ng city animal ${data['name']}:\n${data['feedback']}',
-                                  textAlign: TextAlign.start,
-                                  style: TextStyle(color: Colors.black),
-                                ),
-                                SizedBox(height: 16),
-                              ],
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                     Container(
-                padding: EdgeInsets.all(16),
-                margin: EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.green[100],
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Raymart Villasis, Pangasinan:\nAng dumi ng city animal',
-                      textAlign: TextAlign.start,
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    Text(
-                      'Judge Villasis, Pangasinan:\nYung basurahan puno na.',
-                      textAlign: TextAlign.start,
-                      style: TextStyle(color: Colors.black),
-                    ),
-                  ],
-                ),
+
+        Center(
+          child: ElevatedButton(
+            onPressed: _submitForm,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF587F38),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-                      SizedBox(height: 16),
-
-                      // Buttons for feedback and request
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              // Add your feedback action here
-                            },
-                            child: Text('Give Feedback'),
-                            style: ElevatedButton.styleFrom(
-                              iconColor: Colors.green,
-                              padding: EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              // Add your request empty action here
-                            },
-                            child: Text('Request Empty'),
-                            style: ElevatedButton.styleFrom(
-                              iconColor: Colors.green,
-                              padding: EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+            ),
+            child: const Text(
+              'Send',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
           ),
         ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+   void _submitForm() {
+    // Add your submission logic here
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(style: TextStyle(color: Colors.white),'Collection ${mapCollectionPoint(widget.collectionPoint)}'),
+        centerTitle: true,
+        backgroundColor: Color.fromARGB(255, 47, 61, 2),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back,color: Colors.white,),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Color(0xFF1B3313),
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: Image.asset(
+                            _getImagePath(widget.collectionPoint),
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        SizedBox(width: 16.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Garbage Status:',
+                                style: TextStyle(
+                                  fontSize: 18.0,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Full',
+                                style: TextStyle(
+                                  fontSize: 22.0,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 8.0),
+                              Text(
+                                'Needs to be emptied',
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                              SizedBox(height: 16.0),
+                              Text(
+                                'Date and Time:',
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '2024-05-29   14:23:15',
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              SizedBox(height: 15,),
+                              
+                            ],
+                          ),
+                        ),
+                    
+                      ],
+                    ),
+                    ElevatedButton(onPressed: (){
+                      _showReportForm();
+                    }, child: Text('               Request               '))
+                  ],
+                ),
+                
+              ),
+              SizedBox(height: 24.0),
+              Text(
+                'Logs Notification',
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8.0),
+              Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFFEDF0DC),
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'DATE AND TIME',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'IMAGE',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'STATUS',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      children: feedbackList.map((feedback) {
+                        return _buildLogRow(
+                          feedback['created_at'] ?? 'Unknown date',
+                          'View',
+                          feedback['status'] ?? 'Unknown status',
+                          feedback['is_full'] ?? false,
+                          feedback,
+                        );
+                      }).toList(),
+                    )
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getImagePath(String collectionPoint) {
+    switch (collectionPoint) {
+      case 'Point 1':
+        return 'assets/img/anonas.png';
+      case 'Point 2':
+        return 'assets/img/vicente.png';
+      default:
+        return 'assets/img/default.png';
+    }
+  }
+
+  String _formatDateTime(String dateTimeStr) {
+    final DateTime dateTime = DateTime.parse(dateTimeStr);
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
+  }
+
+  Widget _buildLogRow(String dateTime, String imageSource, String status, bool isFull, Map<String, dynamic> feedback) {
+    IconData icon;
+    Color iconColor;
+
+    if (status == 'FULL') {
+      icon = Icons.warning;
+      iconColor = Colors.red;
+    } else if (status == 'EMPTIED') {
+      icon = Icons.check_circle;
+      iconColor = Colors.green;
+    } else {
+      icon = Icons.error;
+      iconColor = Colors.grey;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              _formatDateTime(dateTime),
+              style: TextStyle(fontSize: 14.0, color: Colors.black),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => _buildFeedbackDialog(feedback),
+                );
+              },
+              child: Text(
+                imageSource,
+                style: TextStyle(fontSize: 14.0, color: Colors.blue),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                Icon(
+                  icon,
+                  color: iconColor,
+                  size: 15.0,
+                ),
+                SizedBox(width: 4.0),
+                Text(
+                  status,
+                  style: TextStyle(fontSize: 9.0, color: Colors.black),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedbackDialog(Map<String, dynamic> feedback) {
+    return AlertDialog(
+      contentPadding: EdgeInsets.all(16.0),
+      content: SingleChildScrollView(
+        child: Column(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (feedback['img_fb'] != null)
+                  Image.network(
+                    feedback['img_fb'],
+                    fit: BoxFit.cover,
+                    height: 200,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: Image.asset(
+                          'assets/img/logspin.gif',
+                          height: 300,
+                          width: 300,
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/img/logspin.gif',
+                        height: 200,
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  ),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 16.0),
+                Text(
+                  feedback['feedback'] ?? 'No feedback provided',
+                  style: TextStyle(fontSize: 16.0),
+                ),
+                SizedBox(height: 16.0),
+                Text(
+                  'Reported by: ${feedback['username'] ?? 'Unknown'}',
+                  style: TextStyle(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Email: ${feedback['email'] ?? 'No email provided'}',
+                  style: TextStyle(fontSize: 14.0, color: Colors.black54),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Close'),
+        ),
+      ],
     );
   }
 }

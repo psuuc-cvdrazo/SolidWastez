@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class CollectorLogin extends StatefulWidget {
-    final void Function()? onTap;
+  final void Function()? onTap;
 
-  const CollectorLogin({super.key,required this.onTap});
+  const CollectorLogin({super.key, required this.onTap});
 
   @override
   State<CollectorLogin> createState() => _CollectorLoginState();
@@ -19,32 +19,32 @@ class _CollectorLoginState extends State<CollectorLogin> {
 
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  
+  
+  bool _isPasswordVisible = false;
 
-  void signIn() async{
-    final authService = Provider.of<AuthService>(context, listen:false);
+  void signIn() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
 
-    try{
-      await authService.signInWithEmailPassword(emailController.text, passwordController.text);
-     Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_)=>const HomeScreen()), (route) => false);
-        ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Signed In successfully")),
-    );
-    }catch (e){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    try {
+      await authService.signInWithEmailPassword(
+          emailController.text, passwordController.text);
+      Navigator.pushAndRemoveUntil(context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()), (route) => false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Signed In successfully")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
-    
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/img/blank.png'), 
-            fit: BoxFit.cover, 
-          ),
-        ),
+        color: Colors.white, 
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -52,54 +52,78 @@ class _CollectorLoginState extends State<CollectorLogin> {
               child: Container(
                 padding: const EdgeInsets.all(24.0),
                 decoration: BoxDecoration(
-                  image: const DecorationImage(
-                    image: AssetImage('assets/img/boxcol.png'), 
-                    fit: BoxFit.cover,
-                  ),
                   borderRadius: BorderRadius.circular(20),
+                  color: Colors.white, 
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2), 
+                      spreadRadius: 3,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF587F38), 
-                        borderRadius: BorderRadius.circular(20), 
-                      ),
-                      child: const Text(
-                        'Welcome Garbage Collector!',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white, 
-                        ),
+                    const Text(
+                      'Welcome Garbage Collector!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green, 
                       ),
                     ),
-                    const SizedBox(height: 46),
-                  
+                    const SizedBox(height: 30),
                     
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: "Email",
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 20.0, horizontal: 10.0), 
+                      ),
+                    ),
                     const SizedBox(height: 20),
                   
-                   CustomTextField(hintText: "Email", tago: false, controller: emailController,types: TextInputType.emailAddress, ),
-                    const SizedBox(height: 24),
-                    
-                   CustomTextField(hintText: "Password", tago: true, controller: passwordController, types: TextInputType.text,),
-                    const SizedBox(height: 24),
-                  
-                   ElevatedButton(
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: !_isPasswordVisible,
+                      keyboardType: TextInputType.text,
+                      decoration: InputDecoration(
+                        hintText: "Password",
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 20.0, horizontal: 10.0), 
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
                       onPressed: () {
-                       signIn();
+                        signIn();
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF587F38), 
+                        backgroundColor: Colors.green.shade700, 
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20), 
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 15),
+                            horizontal: 100, vertical: 16),
                       ),
                       child: const Text(
                         'LOGIN',
@@ -109,32 +133,7 @@ class _CollectorLoginState extends State<CollectorLogin> {
                         ),
                       ),
                     ),
-                     const SizedBox(height: 16),
-                    
-                    // Row(
-                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    //   children: [
-                    //     TextButton(
-                    //       onPressed: () {
-                    //             Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_)=>RegisterScreen(onTap: () {  },)), (route) => false);
-
-                    //       },
-                    //       child: const Text(
-                    //         'Create New Account',
-                    //         style: TextStyle(color: Colors.greenAccent),
-                    //       ),
-                    //     ),
-                    //     TextButton(
-                    //       onPressed: () {
-                            
-                    //       },
-                    //       child: const Text(
-                    //         'Forgot Password',
-                    //         style: TextStyle(color: Colors.greenAccent),
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),

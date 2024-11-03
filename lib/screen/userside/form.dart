@@ -1,14 +1,10 @@
-import 'dart:io'; // To work with File class
+import 'dart:io';
 import 'package:capstoneapp/main.dart';
-import 'package:image_picker/image_picker.dart'; // Image picker package
-import 'package:firebase_storage/firebase_storage.dart'; // For Firebase Storage
-import 'package:path/path.dart'; // To get file name
-import 'package:capstoneapp/components/customtextfield.dart';
-import 'package:capstoneapp/components/readonly.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:quickalert/quickalert.dart';  
 class FormScreen extends StatefulWidget {
   const FormScreen({super.key});
 
@@ -19,296 +15,394 @@ class FormScreen extends StatefulWidget {
 class _FormScreenState extends State<FormScreen> {
   String email = "";
   String firstname = "";
- 
+  File? _imageFile;
   final emailController = TextEditingController();
   final firstnameController = TextEditingController();
   final collectionPointController = TextEditingController();
   final feedbackController = TextEditingController();
   String? selectedCollectionPoint;
-  
-
-
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  final ImagePicker _picker = ImagePicker(); // Image picker instance
-  File? _imageFile; // To store the selected image
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    fetchProf();
+    fetchUserData();
   }
 
   @override
   void dispose() {
-  
     emailController.dispose();
     collectionPointController.dispose();
     feedbackController.dispose();
     super.dispose();
   }
 
-  void fetchProf() async {
-    final User? user = _auth.currentUser;
+  void fetchUserData() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
     if (user != null) {
-      final uid = user.uid;
-      try {
-        final userData = await _firestore.collection("Users").doc(uid).get();
-        if (userData.exists) {
-          setState(() {
-            email = userData.data()?['email'] ?? '';
-            emailController.text = email;
-            firstname = userData.data()?['firstName'] ?? '';
-            firstnameController.text = firstname;
-          });
-        }
-      } catch (e) {
-        print("Error fetching user data: $e");
+      final response = await supabase.from('useraccount').select().eq('uid', user.id).single();
+      if (response != null) {
+        setState(() {
+          email = response['email'] ?? '';
+          firstname = response['firstname'] ?? '';
+          emailController.text = email;
+          firstnameController.text = firstname;
+        });
       }
     }
   }
 
-  Future<void> submitForm() async {
-    String firstnameto = firstnameController.text.trim();
-    String userEmail = emailController.text.trim();
-    String collectionPoint = selectedCollectionPoint ?? '';
-    String userFeedback = feedbackController.text.trim();
+  Future<void> pickImage() async {
+    try {
+      final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      } else {
+        
+        QuickAlert.show(
+          context: navigatorKey.currentContext!,
+          type: QuickAlertType.info,
+          title: "No Image Captured",
+          text: "Please click the camera icon to capture an image.",
+          confirmBtnText: "OK",
+          barrierDismissible: false,
+        );
+      }
+    } catch (e) {
+      
+      QuickAlert.show(
+        context: navigatorKey.currentContext!,
+        type: QuickAlertType.error,
+        title: "Error",
+        text: "Failed to pick image: $e",
+        confirmBtnText: "OK",
+        barrierDismissible: false,
+      );
+    }
+  }
 
-    if (userEmail.isEmpty || collectionPoint.isEmpty || userFeedback.isEmpty) {
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        SnackBar(content: const Text("Please fill in all fields."), backgroundColor: Colors.red),
+ bool _isUploading = false; 
+
+Future<void> uploadImage(File file, {VoidCallback? onSuccess}) async {
+  try {
+    if (!(file.path.endsWith('.jpg') || file.path.endsWith('.png'))) {
+      QuickAlert.show(
+        context: navigatorKey.currentContext!,
+        type: QuickAlertType.error,
+        title: "Invalid Image",
+        text: "Please select a JPG or PNG image.",
+        confirmBtnText: "OK",
+        barrierDismissible: false, 
       );
       return;
     }
 
-    try {
-      String? imageUrl;
+    final supabase = Supabase.instance.client;
+    final fileName = basename(file.path);
+    final fileBytes = await file.readAsBytes();
 
-      // Upload image if one is selected
-      if (_imageFile != null) {
-        imageUrl = await uploadImageToFirebase(_imageFile!);
-      }
+   
+    _isUploading = true; 
+    QuickAlert.show(
+      context: navigatorKey.currentContext!,
+      type: QuickAlertType.loading,
+      text: "Uploading image...",
+      barrierDismissible: false, 
+    );
 
-      await _firestore.collection("ReportForm").add({
-        "username":firstnameto,
-        "email": userEmail,
-        "collection_point": collectionPoint,
-        "feedback": userFeedback,
-        "image_url": imageUrl, // Include image URL in the form
-        "timestamp": FieldValue.serverTimestamp(),
-      });
-
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        SnackBar(content: const Text("Report submitted successfully!"), backgroundColor: Colors.green),
-      );
+    await supabase.storage.from('img').uploadBinary('feedback_img/$fileName', fileBytes);
 
     
-      feedbackController.clear();
-      setState(() {
+    _isUploading = false;
+    Navigator.pop(navigatorKey.currentContext!); 
+
+    QuickAlert.show(
+      context: navigatorKey.currentContext!,
+      type: QuickAlertType.success,
+      title: "Upload Successful",
+      text: "Image uploaded successfully!",
+      confirmBtnText: "OK",
+      barrierDismissible: false, 
+      onConfirmBtnTap: () {
+        Navigator.pop(navigatorKey.currentContext!); 
+        if (onSuccess != null) {
+          onSuccess(); 
+        }
+      },
+    );
+  } catch (e) {
+    
+    if (_isUploading) {
+      _isUploading = false;
+      Navigator.pop(navigatorKey.currentContext!);
+    }
+
+    QuickAlert.show(
+      context: navigatorKey.currentContext!,
+      type: QuickAlertType.error,
+      title: "Upload Failed",
+      text: "Failed to upload image: $e",
+      confirmBtnText: "OK",
+      barrierDismissible: false, 
+    );
+  }
+}
+
+
+
+
+Future<void> submitForm() async {
+  String firstnameto = firstnameController.text.trim();
+  String userEmail = emailController.text.trim();
+  String collectionPoint = selectedCollectionPoint ?? '';
+  String userFeedback = feedbackController.text.trim();
+
+  if (userEmail.isEmpty || collectionPoint.isEmpty || userFeedback.isEmpty || _imageFile == null) {
+    QuickAlert.show(
+      context: navigatorKey.currentContext!,
+      type: QuickAlertType.warning,
+      title: "Incomplete Form",
+      text: "Please fill in all fields and upload an image.",
+      confirmBtnText: "OK",
+      barrierDismissible: false,
+    );
+    return;
+  }
+
+  
+  if (_imageFile != null) {
+    await uploadImage(_imageFile!, onSuccess: () async {
+      try {
+        final supabase = Supabase.instance.client;
+        final fileName = basename(_imageFile!.path);
+        String? imageUrl = supabase.storage.from('img').getPublicUrl('feedback_img/$fileName');
+
+        await supabase.from('user_feedback').insert({
+          "username": firstnameto,
+          "email": userEmail,
+          "collection_point": collectionPoint,
+          "feedback": userFeedback,
+          "img_fb": imageUrl,
+          "created_at": DateTime.now().toIso8601String(),
+        });
+
+       QuickAlert.show(
+      context: navigatorKey.currentContext!,
+      type: QuickAlertType.success,
+      title: "Feedback Submitted",
+      text: "Feedback submitted successfully!",
+      confirmBtnText: "OK",
+      barrierDismissible: false,
+      onConfirmBtnTap: () {
+        Navigator.pop(navigatorKey.currentContext!); 
+
+       
+       
+        collectionPointController.clear(); 
+        feedbackController.clear();
         selectedCollectionPoint = null;
-        _imageFile = null; // Reset image selection
-      });
-    } catch (e) {
-ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-  SnackBar(content: Text("Failed to submit report: $e"), backgroundColor: Colors.red),
-);
-
-    }
+        _imageFile = null; 
+        setState(() {}); 
+      },
+    );
+      } catch (e) {
+        QuickAlert.show(
+          context: navigatorKey.currentContext!,
+          type: QuickAlertType.error,
+          title: "Submission Failed",
+          text: "Failed to submit feedback: $e",
+          confirmBtnText: "OK",
+          barrierDismissible: false,
+        );
+      }
+    });
+  } else {
+    
+    QuickAlert.show(
+      context: navigatorKey.currentContext!,
+      type: QuickAlertType.warning,
+      title: "No Image",
+      text: "Please upload an image first.",
+      confirmBtnText: "OK",
+      barrierDismissible: true,
+    );
   }
+}
 
-  // Method to capture image from camera
-  Future<void> pickImageFromCamera() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
-    }
-  }
 
-  // Method to upload image to Firebase Storage
-  Future<String?> uploadImageToFirebase(File imageFile) async {
-    try {
-      String fileName = basename(imageFile.path); // Extract the file name
-      Reference storageReference = FirebaseStorage.instance
-          .ref()
-          .child('report_images/$fileName');
-
-      UploadTask uploadTask = storageReference.putFile(imageFile);
-      TaskSnapshot snapshot = await uploadTask;
-      String downloadUrl = await snapshot.ref.getDownloadURL();
-      return downloadUrl;
-    } catch (e) {
-      print("Image upload error: $e");
-      return null;
+  void viewImage() {
+    if (_imageFile == null) {
+      QuickAlert.show(
+        context: navigatorKey.currentContext!,
+        type: QuickAlertType.info,
+        title: "No Image",
+        text: "Please capture an image first.",
+        confirmBtnText: "OK",
+      );
+    } else {
+      
+      Navigator.push(
+        navigatorKey.currentContext!,
+        MaterialPageRoute(
+          builder: (context) => ImageViewerScreen(imageFile: _imageFile!),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/img/blank.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  image: const DecorationImage(
-                    image: AssetImage('assets/img/boxcol.png'),
-                    fit: BoxFit.cover,
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(24.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 5,
+                    blurRadius: 7,
+                    offset: const Offset(0, 3),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Center(
-                      child: Text(
-                        'Report Form!',
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
+                    child: Text(
+                      'REPORT FORM',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+                  const Text("COLLECTION POINT", style: TextStyle(color: Colors.black)),
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      labelStyle: const TextStyle(color: Colors.black),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: const BorderSide(color: Colors.grey),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: const BorderSide(color: Colors.teal),
+                      ),
+                    ),
+                    dropdownColor: Colors.white,
+                    items: ['Point 1', 'Point 2', 'Point 3'].map((point) {
+                      return DropdownMenuItem(
+                        value: point,
+                        child: Text(point, style: const TextStyle(color: Colors.black)),
+                      );
+                    }).toList(),
+                    value: selectedCollectionPoint,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedCollectionPoint = value;
+                      });
+                    },
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text("FEEDBACK", style: TextStyle(color: Colors.black)),
+                  TextField(
+                    controller: feedbackController,
+                    decoration: InputDecoration(
+                      labelStyle: const TextStyle(color: Colors.black),
+                      hintText: 'Type here...',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
+                    maxLines: 4,
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Column(
+                      children: [
+                        
+                        TextButton(
+                          onPressed: viewImage,
+                          child: Text(
+                            _imageFile != null ? 'View Image' : 'No Image Captured',
+                            style: TextStyle(color: Colors.blue),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.camera_alt),
+                          onPressed: pickImage,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: submitForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF587F38),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      ),
+                      child: const Text(
+                        'Send',
                         style: TextStyle(
-                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 46),
-
-                    
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      "EMAIL",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    ReadOnlyTo(
-                      hintText: email,
-                      tago: false,
-                      controller: emailController,
-                    ),
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      "COLLECTION POINT",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'COLLECTION POINT',
-                        labelStyle: const TextStyle(color: Colors.black),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: const BorderSide(color: Colors.teal),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: const BorderSide(color: Colors.teal),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: const BorderSide(color: Colors.teal),
-                        ),
-                      ),
-                      dropdownColor: Colors.white,
-                      items: ['Point 1', 'Point 2', 'Point 3']
-                          .map((point) => DropdownMenuItem(
-                                value: point,
-                                child: Text(
-                                  point,
-                                  style: const TextStyle(color: Colors.black),
-                                ),
-                              ))
-                          .toList(),
-                      value: selectedCollectionPoint,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedCollectionPoint = value;
-                        });
-                      },
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      "FEEDBACK",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    TextField(
-                      controller: feedbackController,
-                      decoration: InputDecoration(
-                        labelText: 'FEEDBACK',
-                        labelStyle: const TextStyle(color: Colors.black),
-                        hintText: 'Type here...',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                      ),
-                      maxLines: 4,
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // const Text(
-                    //   "Upload Image",
-                    //   style: TextStyle(color: Colors.white),
-                    // ),
-                    // const SizedBox(height: 10),
-                    // ElevatedButton.icon(
-                    //   onPressed: pickImageFromCamera,
-                    //   icon: const Icon(Icons.camera_alt),
-                    //   label: const Text("Capture Image"),
-                    //   style: ElevatedButton.styleFrom(
-                    //     backgroundColor: const Color(0xFF587F38),
-                    //   ),
-                    // ),
-                    const SizedBox(height: 10),
-
-                    // Preview the selected image
-                    // if (_imageFile != null)
-                    //   Image.file(_imageFile!, height: 200, width: 200, fit: BoxFit.cover),
-
-                    const SizedBox(height: 24),
-
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF587F38),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                        ),
-                        child: const Text(
-                          'Send',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class ImageViewerScreen extends StatelessWidget {
+  final File imageFile;
+
+  const ImageViewerScreen({Key? key, required this.imageFile}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Captured Image'),
+      ),
+      body: Center(
+        child: Image.file(imageFile),
       ),
     );
   }

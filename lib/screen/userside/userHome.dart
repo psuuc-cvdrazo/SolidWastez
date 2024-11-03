@@ -27,11 +27,11 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     return Scaffold(
       body: _pages[_selectedIndex],  
       bottomNavigationBar: CurvedNavigationBar(
-        color: const Color(0xFF0A2A05),
+        color: Color.fromARGB(255, 47, 61, 2),
         index: _selectedIndex,
         animationDuration: const Duration(milliseconds: 300),
         animationCurve: Curves.fastLinearToSlowEaseIn,
-        buttonBackgroundColor: const Color(0xFF0A2A05),
+        buttonBackgroundColor:Color.fromARGB(255, 47, 61, 2),
         backgroundColor: Colors.transparent,
         items: [
           Icon(

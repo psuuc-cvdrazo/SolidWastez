@@ -8,14 +8,14 @@ class CollectionPointScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green[900], // Dark green background
+      backgroundColor: Colors.green[900], 
       appBar: AppBar(
-        backgroundColor: Colors.green[700], // Lighter green
+        backgroundColor: Colors.green[700],
         title: const Text('Collection points of Anonas'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            // Back action
+            
           },
         ),
       ),
@@ -23,24 +23,24 @@ class CollectionPointScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image and Garbage Status section
+          
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Main Image
+                  
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8.0),
                     child: Image.network(
-                      'https://via.placeholder.com/150', // Replace with actual image URL
+                      'https://via.placeholder.com/150', 
                       height: 120,
                       width: 120,
                       fit: BoxFit.cover,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // Status and Date
+                  
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +82,7 @@ class CollectionPointScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Logs Notification section
+          
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16.0),
               padding: const EdgeInsets.all(12.0),
@@ -101,14 +101,14 @@ class CollectionPointScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Table
+                 
                   _buildLogsTable(),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            // User Report section
+          
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -131,7 +131,7 @@ class CollectionPointScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Buttons section
+            
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
@@ -139,7 +139,7 @@ class CollectionPointScreen extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Handle Give Feedback
+                      
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.grey[300],
@@ -155,7 +155,7 @@ class CollectionPointScreen extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Handle Request Empty
+                        
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.grey[300],

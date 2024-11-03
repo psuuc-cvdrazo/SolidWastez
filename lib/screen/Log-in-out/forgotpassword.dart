@@ -1,6 +1,6 @@
 import 'package:capstoneapp/screen/Log-in-out/userLogin.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -14,7 +14,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   void dispose() {
-    // Dispose the controller when the widget is removed from the widget tree
     emailController.dispose();
     super.dispose();
   }
@@ -22,11 +21,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   // Function to send password reset email
   Future<void> passReset() async {
     try {
-      // Trim spaces from the input email
       String email = emailController.text.trim();
 
-      // Send the password reset email
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      // Send the password reset email using Supabase
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
 
       // If successful, show a success message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -35,24 +33,39 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           backgroundColor: Colors.green,
         ),
       );
-    } on FirebaseAuthException catch (e) {
-      // Handle different error codes
-      String errorMessage = 'An error occurred. Please try again.';
+    } on AuthException catch (e) {
+      // Handle Supabase-specific errors
+      String errorMessage;
 
-      if (e.code == 'user-not-found') {
-        errorMessage = 'Email not found. Please check and try again.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'The email address is not valid.';
-      } else if (e.code == 'too-many-requests') {
-        errorMessage = 'Too many requests. Please try again later.';
-      } else if (e.code == 'network-request-failed') {
-        errorMessage = 'Network error. Please check your internet connection.';
+      switch (e.message) {
+        case 'user-not-found':
+          errorMessage = 'Email not found. Please check and try again.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many requests. Please try again later.';
+          break;
+        case 'network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection.';
+          break;
+        default:
+          errorMessage = 'An error occurred. Please try again.';
       }
 
       // Show the error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      // Catch any other exceptions
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An unexpected error occurred: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -63,83 +76,71 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.green.shade900,
-        title: Text('Change Your Password',style: TextStyle(color: Colors.white),),
+        backgroundColor: Color.fromARGB(255, 47, 61, 2),
+        title: Text(
+          'Change Your Password',
+          style: TextStyle(color: Colors.white),
+        ),
         centerTitle: true,
-         leading: IconButton(
-          icon: Icon(Icons.arrow_back,color: Colors.white,),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
           onPressed: () {
-  Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_)=>LoginScreen(onTap: () {  },)), (route) => false);
-
+            Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => LoginScreen(onTap: () {})),
+                (route) => false);
           },
         ),
       ),
-      backgroundColor: const Color.fromARGB(255, 15, 63, 20),
+      backgroundColor: Color.fromARGB(255, 255, 255, 255),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-      
-              // Lock icon
               const Icon(
                 Icons.lock,
                 size: 100,
-                color: Color.fromARGB(255, 255, 255, 255),
+                color: Color.fromARGB(255, 47, 61, 2),
               ),
               const SizedBox(height: 20),
-
-              // Forgot password title
               const Text(
                 'Forgot password',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color.fromARGB(255, 56, 208, 26),
+                  color: Color.fromARGB(255, 47, 61, 2),
                 ),
               ),
               const SizedBox(height: 10),
-
-              // Instruction text
               const Text(
                 'Enter your email address to receive a link to change your pass',
-                
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Color.fromARGB(255, 248, 247, 247)),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Color.fromARGB(255, 47, 61, 2),
+                ),
               ),
               const SizedBox(height: 30),
-
-              // Email input field
               TextField(
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: Colors.black),
                 controller: emailController,
                 decoration: InputDecoration(
-                  focusColor: Colors.white,
                   prefixIcon: const Icon(Icons.person),
                   labelText: 'E-mail',
-                  hoverColor: Colors.white,
-                  fillColor: Colors.white,
-                  iconColor: Colors.green,
-                  suffixIconColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide(color: Colors.white)
-                    
+                    borderSide: BorderSide(color: Colors.grey),
                   ),
                 ),
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
-                onChanged: (value) {
-                  emailController.text = value.trim(); // Trim spaces as the user types
-                  emailController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: emailController.text.length),
-                  ); // Maintain cursor position
-                },
               ),
               const SizedBox(height: 20),
-
-              // Send button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -149,7 +150,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    backgroundColor: const Color.fromARGB(255, 43, 231, 26),
+                    backgroundColor: Color.fromARGB(255, 47, 61, 2),
                   ),
                   child: const Text(
                     'Send',
@@ -158,7 +159,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
             ],
           ),
         ),

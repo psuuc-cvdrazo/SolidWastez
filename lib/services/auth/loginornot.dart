@@ -1,34 +1,34 @@
-import 'package:capstoneapp/screen/Log-in-out/firstscreen.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:capstoneapp/screen/collectorside/collectorHome.dart';
 import 'package:capstoneapp/screen/userside/userHome.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
+import 'package:capstoneapp/screen/Log-in-out/firstscreen.dart';
 
 class LoginNaba extends StatelessWidget {
   const LoginNaba({super.key});
 
   Future<String?> getUserRole() async {
-    User? user = FirebaseAuth.instance.currentUser;
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
 
     if (user != null) {
-     
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .get();
+      final userProfileResponse = await supabase
+          .from('useraccount')
+          .select()
+          .eq('uid', user.id) 
+          .single();
 
-      if (userDoc.exists) {
-        return 'user';  
+      if (userProfileResponse.isNotEmpty) {
+        return 'useraccount';
       }
 
-      
-      DocumentSnapshot collectorDoc = await FirebaseFirestore.instance
-          .collection('Collector')
-          .doc(user.uid)
-          .get();
+      final collectorProfileResponse = await supabase
+          .from('collector')
+          .select()
+          .eq('uid', user.id)
+          .single();
 
-      if (collectorDoc.exists) {
+      if (collectorProfileResponse.isNotEmpty) {
         return 'collector';
       }
     }
@@ -38,21 +38,25 @@ class LoginNaba extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder(
-        stream: FirebaseAuth.instance.authStateChanges(),
+      body: StreamBuilder<AuthState>(
+        stream: Supabase.instance.client.auth.onAuthStateChange,
         builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return FutureBuilder(
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasData && snapshot.data?.session != null) {
+            return FutureBuilder<String?>(
               future: getUserRole(),
-              builder: (context, AsyncSnapshot<String?> roleSnapshot) {
+              builder: (context, roleSnapshot) {
                 if (roleSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (roleSnapshot.hasData) {
-                  String role = roleSnapshot.data!;
+                  String? role = roleSnapshot.data;
                   if (role == 'collector') {
-                    return const HomeScreen();  
-                  } else if (role == 'user') {
-                    return const UserHomeScreen();  
+                    return const HomeScreen();
+                  } else if (role == 'useraccount') {
+                    return const UserHomeScreen(); 
                   } else {
                     return const Center(child: Text('Role not recognized'));
                   }
@@ -62,7 +66,7 @@ class LoginNaba extends StatelessWidget {
               },
             );
           } else {
-            return const FirstScreen();  
+            return const FirstScreen();
           }
         },
       ),

@@ -1,80 +1,60 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 
 class AuthService extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
-
-
-//sign in
-Future<UserCredential> signInWithEmailPassword(String email, password) async {
+  // Sign in
+  Future<AuthResponse> signInWithEmailPassword(String email, String password) async {
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final response = await _supabase.auth.signInWithPassword(email: email, password: password);
+      return response;
+    } on AuthException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  // Sign up
+   Future<AuthResponse> signUpWithEmailPassword(
+    String email,
+    String password, {
+    required String firstName,
+    required String lastName,
+    required String phoneNumber,
+  }) async {
+    try {
+      final response = await _supabase.auth.signUp(
         email: email,
         password: password,
+       
+        data: {
+          'firstName': firstName,
+          'lastName': lastName,
+          'phoneNumber': phoneNumber,
+        },
       );
 
-      // DocumentSnapshot userDoc = await _firestore.collection("Users").doc(userCredential.user!.uid).get();
-      // Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-
-      // // Set user data in Firestore document
-      // _firestore
-      //     .collection("Users")
-      //     .doc(userCredential.user!.uid)
-      //     .set({
-      //       'uid': userCredential.user!.uid,
-      //       'email': email,
-      //       'firstName': userData['firstName'],
-      //       'middleName': userData['middleName'],
-      //       'lastName': userData['lastName'],
-      //     });
-
-      return userCredential;
-    } on FirebaseAuthException catch (e) {
-      throw Exception(e.code);
+      if (response.user != null) {
+        
+        await _supabase.from('useraccount').insert({
+          'uid': response.user?.id,
+          'email': email,
+          'firstname': firstName,
+          'lastname': lastName,
+          'phone': phoneNumber,
+          'password': password,
+        });
+      }
+      
+      return response;
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     }
   }
 
 
-//signup
-  Future<UserCredential> signUpWithEmailPassword(
-  String email, 
-  String password, 
-  {
-    required String firstName,
-    required String lastName,
-    required String phonenumber,
-    required String firstPassword,
-  
-  }) async {
-  try {
-    UserCredential userCredential =
-        await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    await _firestore.collection("Users").doc(userCredential.user!.uid).set({
-      'uid': userCredential.user!.uid,
-      'email': email,
-      'firstName': firstName,
-      'lastName': lastName,
-      'ContactNumber': phonenumber,
-      'password': password,
-      'FirstPassword': firstPassword,
-    });
-
-    return userCredential;
-  } on FirebaseAuthException catch (e) {
-    throw Exception(e.code);
-  }
-}
-
-
+  // Sign out
   Future<void> signOut() async {
-    return await _auth.signOut();
+    await _supabase.auth.signOut();
   }
 }
- 

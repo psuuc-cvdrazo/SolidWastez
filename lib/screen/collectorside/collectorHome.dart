@@ -1,6 +1,7 @@
 import 'package:capstoneapp/screen/collectorside/collectorprofile.dart';
 import 'package:capstoneapp/screen/collectorside/logs.dart';
 import 'package:capstoneapp/screen/map.dart';
+import 'package:capstoneapp/screen/mapCollector.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 
@@ -19,8 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _pages = [
    
    
-    LogsScreen(),
-     const MapScreen(),
+    LogScreen(),
+     const CollectorMapScreen(),
      const CollectorProfileScreen(),                   
   ];
 
